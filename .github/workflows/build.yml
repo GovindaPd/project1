@@ -39,9 +39,12 @@ jobs:
           pip install kivy==2.3.0 kivy_examples --no-binary kivy
           pip install Cython==3.0.8  # You may need to specify the version
 
-      - name: Build APK
-        run: |
-          python -m buildozer -v android debug
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          command: buildozer android debug
+          buildozer_version: stable
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v2
