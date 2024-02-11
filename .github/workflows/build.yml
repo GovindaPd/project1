@@ -1,42 +1,52 @@
-name: CI
+name: Build APK
+
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-     # used to cache dependencies with a timeout
-      - name: Get Date
-        id: get-date
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9.5'
+
+      - name: Install build dependencies
         run: |
-          echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
-        shell: bash
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            python3-pip \
+            python3-setuptools \
+            python3-wheel \
+            python3-dev \
+            zlib1g-dev \
+            libncurses5-dev \
+            libglib2.0-dev \
+            libsdl2-dev \
+            libffi-dev
 
-      - name: Cache Buildozer global directory
-        uses: actions/cache@v2
-        with:
-          path: .buildozer_global
-          key: buildozer-global-${{ hashFiles('buildozer.spec') }} # Replace with your path
+      - name: Install Kivy and build dependencies
+        run: |
+          pip install kivy==2.3.0 kivy_examples --no-binary kivy
+          pip install Cython==3.0.8  # You may need to specify the version
 
-      - uses: actions/cache@v2
-        with:
-          path: .buildozer
-          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
+      - name: Build APK
+        run: |
+          python -m buildozer -v android debug
 
-      - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
-        with:
-          command: buildozer android debug
-          buildozer_version: stable
-
-      - name: Upload artifacts
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v2
         with:
-          name: package
+          name: my-app-debug
           path: ${{ steps.buildozer.outputs.filename }}
