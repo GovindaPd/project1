@@ -1,71 +1,59 @@
-name: CI
+name: Build
 on:
   push:
-    branches: [ main ]
+    branches-ignore:
+      - data
+      - gh-pages
+    tags:
+      - '**'
   pull_request:
-    branches:
-      [ main ]
+    branches-ignore:
+      - data
+      - gh-pages
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  # Build job. Builds app for Android with Buildozer
+  build-android:
+    name: Build for Android
+    runs-on: ubuntu-20.04
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v2
-
-      #used to cache dependencies with a timeout
-      - name: Get Date
-        id: get-date
-        run: |
-          echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
-        shell: bash
-
-      - name: Cache Buildozer global directory
-        uses: actions/cache@v2
         with:
-          path: .buildozer_global
-          key: buildozer-global-${{ hashFiles('buildozer.spec') }} # Replace with your path
-
-      - uses: actions/cache@v2
-        with:
-          path: .buildozer
-          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
-
+          path: master
+          
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3'
-
-      - name: Install build dependencies
+          python-version: 3.8
+          architecture: x64
+          
+      - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            python3-pip \
-            python3-setuptools \
-            python3-wheel \
-            python3-dev \
-            zlib1g-dev \
-            libncurses5-dev \
-            libglib2.0-dev \
-            libsdl2-dev \
-            libffi-dev
-
-      - name: Install Kivy and build dependencies
-        run: |
-          pip install kivy==2.3.0 kivy_examples --no-binary kivy
-          pip install Cython==3.0.8  # You may need to specify the version
+          python -m pip install --upgrade pip
+          pip install --upgrade Cython
 
       - name: Build with Buildozer
         uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
         with:
-          command: buildozer android debug
+          repository_root: master
+          workdir: .
           buildozer_version: stable
 
-      - name: Upload APK artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: my-app-debug
+          name: package
           path: ${{ steps.buildozer.outputs.filename }}
+
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          path: data
+          ref: data # Branch name
+
+      - name: Push binary to data branch
+        if: github.event_name == 'push'
+        run: python master/.ci/move_binary.py "${{ steps.buildozer.outputs.filename }}" master data bin
