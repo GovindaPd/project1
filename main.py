@@ -20,14 +20,12 @@ class myLayout(BoxLayout):
 		self.add_widget(btn)
 
 	def removeWidgget(self, instance):
-		print(self.b1.children[0].text)
-
+		#print(self.b1.children[0].text)
 		self.b1.remove_widget(self.b1.children[0])
 
 class MyBox(App):
 	def build(self):
 		return myLayout()
-
-
+		
 if __name__=='__main__':
 	MyBox().run()
